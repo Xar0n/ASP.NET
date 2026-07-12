@@ -1,5 +1,6 @@
 using PromoCodeFactory.Core.Abstractions.Repositories;
 using PromoCodeFactory.Core.Domain;
+using PromoCodeFactory.Core.Exceptions;
 using System.Collections.Concurrent;
 
 namespace PromoCodeFactory.DataAccess.Repositories;
@@ -19,21 +20,34 @@ public class InMemoryRepository<T> : IRepository<T> where T : BaseEntity
 
     public Task<T?> GetById(Guid id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        return Task.FromResult(_data.Values.FirstOrDefault(d => d.Id == id));
     }
 
     public Task Add(T entity, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        _data.Values.Add(entity);
+        return Task.CompletedTask;
     }
 
     public Task Update(T entity, CancellationToken ct)
     {
+        var item = _data.Values.FirstOrDefault(d => d.Id == entity.Id);
+        if (item == null)
+            throw new EntityNotFoundException<T>(entity.Id);
+
+        _data.Values.Remove(item);
+        _data.Values.Add(item);
+
         throw new NotImplementedException();
     }
 
     public Task Delete(Guid id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var entity = _data.Values.FirstOrDefault(d => d.Id == id);
+        if (entity == null)
+            throw new EntityNotFoundException<T>(id);
+
+        _data.Values.Remove(entity);
+        return Task.CompletedTask;
     }
 }

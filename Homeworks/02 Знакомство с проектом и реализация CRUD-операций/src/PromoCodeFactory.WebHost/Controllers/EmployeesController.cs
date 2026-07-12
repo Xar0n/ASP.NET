@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PromoCodeFactory.Core.Application.Abstractions;
 using PromoCodeFactory.WebHost.Mapping;
 using PromoCodeFactory.WebHost.Models;
 
@@ -8,8 +9,7 @@ namespace PromoCodeFactory.WebHost.Controllers;
 /// Сотрудники
 /// </summary>
 public class EmployeesController(
-    IRepository<Employee> employeeRepository,
-    IRepository<Role> roleRepository
+    IUserService userService
     ) : BaseController
 {
     /// <summary>
@@ -19,11 +19,8 @@ public class EmployeesController(
     [ProducesResponseType(typeof(IEnumerable<EmployeeShortResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<EmployeeShortResponse>>> Get(CancellationToken ct)
     {
-        var employees = await employeeRepository.GetAll(ct);
-
-        var employeesModels = employees.Select(Mapper.ToEmployeeShortResponse).ToList();
-
-        return Ok(employeesModels);
+        var employees = await userService.Get(ct);
+        return Ok(employees.Select(e => Mapper.ToEmployeeShortResponse(e)));
     }
 
     /// <summary>
