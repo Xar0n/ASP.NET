@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using PromoCodeFactory.Core.Application.Abstractions;
+using PromoCodeFactory.Core.Exceptions;
 using PromoCodeFactory.WebHost.Mapping;
 using PromoCodeFactory.WebHost.Models;
 
@@ -8,8 +10,8 @@ namespace PromoCodeFactory.WebHost.Controllers;
 /// Сотрудники
 /// </summary>
 public class EmployeesController(
-    IRepository<Employee> employeeRepository,
-    IRepository<Role> roleRepository
+    IUserService userService,
+    IRoleService roleService
     ) : BaseController
 {
     /// <summary>
@@ -19,11 +21,8 @@ public class EmployeesController(
     [ProducesResponseType(typeof(IEnumerable<EmployeeShortResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<EmployeeShortResponse>>> Get(CancellationToken ct)
     {
-        var employees = await employeeRepository.GetAll(ct);
-
-        var employeesModels = employees.Select(Mapper.ToEmployeeShortResponse).ToList();
-
-        return Ok(employeesModels);
+        var employees = await userService.Get(ct);
+        return Ok(employees.Select(e => Mapper.ToEmployeeShortResponse(e)));
     }
 
     /// <summary>
@@ -34,7 +33,11 @@ public class EmployeesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EmployeeResponse>> GetById([FromRoute] Guid id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var employee = await userService.GetById(id, ct);
+        if (employee is null)
+            return NotFound();
+
+        return Ok(Mapper.ToEmployeeResponse(employee));
     }
 
     /// <summary>
@@ -45,7 +48,14 @@ public class EmployeesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<EmployeeResponse>> Create([FromBody] EmployeeCreateRequest request, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var role = await roleService.GetById(request.RoleId, ct);
+        if (role is null)
+            return BadRequest("Роль не найдена");
+
+        var employee = Mapper.ToEmployee(request, role);
+        await userService.Create(employee, ct);
+
+        return CreatedAtAction(nameof(GetById), new { id = employee.Id }, Mapper.ToEmployeeResponse(employee));
     }
 
     /// <summary>
@@ -60,7 +70,31 @@ public class EmployeesController(
         [FromBody] EmployeeUpdateRequest request,
         CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var employee = await userService.Update(
+                id,
+                request.FirstName,
+                request.LastName,
+                request.Email,
+                request.RoleId,
+                ct);
+
+            return Ok(Mapper.ToEmployeeResponse(employee));
+        }
+        catch (EntityNotFoundException ex)
+        {
+            var message = "";
+            if (ex.EntityType == typeof(Employee))
+                message = "Пользователь не найден";
+            else if (ex.EntityType == typeof(Role))
+                message = "Роль не найдена";
+            return NotFound(message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>
@@ -73,6 +107,19 @@ public class EmployeesController(
         [FromRoute] Guid id,
         CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            await userService.Delete(id, ct);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        return NoContent();
     }
 }
