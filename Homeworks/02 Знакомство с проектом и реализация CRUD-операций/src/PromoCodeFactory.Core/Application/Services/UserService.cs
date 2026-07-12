@@ -16,4 +16,9 @@ public class UserService(
         return employeesModels;
     }
 
+    public Task<Employee?> GetById(Guid id, CancellationToken ct)
+    {
+        return employeeRepository.GetById(id, ct);
+    }
+
 }
