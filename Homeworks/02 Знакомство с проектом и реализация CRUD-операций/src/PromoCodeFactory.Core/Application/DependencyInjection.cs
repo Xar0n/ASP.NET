@@ -14,5 +14,6 @@ public static class DependencyInjection
     private static void InitServices(this IServiceCollection services)
     {
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IRoleService, RoleService>();
     }
 }

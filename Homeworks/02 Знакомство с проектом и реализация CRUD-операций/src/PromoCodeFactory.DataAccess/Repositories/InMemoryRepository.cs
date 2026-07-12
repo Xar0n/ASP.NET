@@ -25,7 +25,7 @@ public class InMemoryRepository<T> : IRepository<T> where T : BaseEntity
 
     public Task Add(T entity, CancellationToken ct)
     {
-        _data.Values.Add(entity);
+        _data[entity.Id] = entity;
         return Task.CompletedTask;
     }
 

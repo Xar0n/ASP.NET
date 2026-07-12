@@ -4,8 +4,7 @@ using PromoCodeFactory.Core.Domain.Administration;
 namespace PromoCodeFactory.Core.Application.Services;
 
 public class UserService(
-    IRepository<Employee> employeeRepository,
-    IRepository<Role> roleRepository
+    IRepository<Employee> employeeRepository
 ) : IUserService
 {
     public async Task<List<Employee>> Get(CancellationToken ct)
@@ -19,6 +18,11 @@ public class UserService(
     public Task<Employee?> GetById(Guid id, CancellationToken ct)
     {
         return employeeRepository.GetById(id, ct);
+    }
+
+    public Task Create(Employee employee, CancellationToken ct)
+    {
+        return employeeRepository.Add(employee, ct);
     }
 
 }

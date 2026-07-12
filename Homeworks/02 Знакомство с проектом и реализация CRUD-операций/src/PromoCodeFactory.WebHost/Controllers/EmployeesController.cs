@@ -9,7 +9,8 @@ namespace PromoCodeFactory.WebHost.Controllers;
 /// Сотрудники
 /// </summary>
 public class EmployeesController(
-    IUserService userService
+    IUserService userService,
+    IRoleService roleService
     ) : BaseController
 {
     /// <summary>
@@ -46,7 +47,14 @@ public class EmployeesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<EmployeeResponse>> Create([FromBody] EmployeeCreateRequest request, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var role = await roleService.GetById(request.RoleId, ct);
+        if (role is null)
+            return BadRequest("Роль не найдена");
+
+        var employee = Mapper.ToEmployee(request, role);
+        await userService.Create(employee, ct);
+
+        return CreatedAtAction(nameof(GetById), new { id = employee.Id }, Mapper.ToEmployeeResponse(employee));
     }
 
     /// <summary>
