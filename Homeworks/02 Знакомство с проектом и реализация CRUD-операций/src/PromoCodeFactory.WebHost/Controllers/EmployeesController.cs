@@ -85,11 +85,28 @@ public class EmployeesController(
 
         try
         {
-            await userService.Update(employee, ct);
+            var employee = await userService.Update(
+                id,
+                request.FirstName,
+                request.LastName,
+                request.Email,
+                request.RoleId,
+                ct);
+
+            return Ok(Mapper.ToEmployeeResponse(employee));
         }
-        catch (EntityNotFoundException)
+        catch (EntityNotFoundException ex)
         {
-            return NotFound();
+            var message = "";
+            if (ex.EntityType == typeof(Employee))
+                message = "Пользователь не найден";
+            else if (ex.EntityType == typeof(Role))
+                message = "Роль не найдена";
+            return NotFound(message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
         }
 
         return Ok(Mapper.ToEmployeeResponse(employee));

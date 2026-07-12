@@ -8,5 +8,5 @@ public interface IUserService
 
     Task Create(Employee employee, CancellationToken ct);
 
-    Task Update(Employee employee, CancellationToken ct);
+    Task<Employee> Update(Guid id, string firstName, string lastName, string email, Guid roleId, CancellationToken ct);
 }
