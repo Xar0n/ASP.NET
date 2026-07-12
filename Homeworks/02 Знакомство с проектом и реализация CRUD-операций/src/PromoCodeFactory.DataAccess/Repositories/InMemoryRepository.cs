@@ -40,11 +40,9 @@ public class InMemoryRepository<T> : IRepository<T> where T : BaseEntity
 
     public Task Delete(Guid id, CancellationToken ct)
     {
-        var entity = _data.Values.FirstOrDefault(d => d.Id == id);
-        if (entity == null)
+        if (!_data.TryRemove(id, out _))
             throw new EntityNotFoundException<T>(id);
 
-        _data.Values.Remove(entity);
         return Task.CompletedTask;
     }
 }

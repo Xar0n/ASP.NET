@@ -70,19 +70,6 @@ public class EmployeesController(
         [FromBody] EmployeeUpdateRequest request,
         CancellationToken ct)
     {
-        var employee = await userService.GetById(id, ct);
-        if (employee is null)
-            return NotFound();
-
-        var role = await roleService.GetById(request.RoleId, ct);
-        if (role is null)
-            return BadRequest("Роль не найдена");
-
-        employee.FirstName = request.FirstName;
-        employee.LastName = request.LastName;
-        employee.Email = request.Email;
-        employee.Role = role;
-
         try
         {
             var employee = await userService.Update(
@@ -108,8 +95,6 @@ public class EmployeesController(
         {
             return BadRequest(ex.Message);
         }
-
-        return Ok(Mapper.ToEmployeeResponse(employee));
     }
 
     /// <summary>
@@ -122,6 +107,19 @@ public class EmployeesController(
         [FromRoute] Guid id,
         CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            await userService.Delete(id, ct);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        return NoContent();
     }
 }

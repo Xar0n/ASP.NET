@@ -1,10 +1,12 @@
 using PromoCodeFactory.Core.Abstractions.Repositories;
 using PromoCodeFactory.Core.Domain.Administration;
+using PromoCodeFactory.Core.Exceptions;
 
 namespace PromoCodeFactory.Core.Application.Services;
 
 public class UserService(
-    IRepository<Employee> employeeRepository
+    IRepository<Employee> employeeRepository,
+    IRepository<Role> roleRepository
 ) : IUserService
 {
     public async Task<List<Employee>> Get(CancellationToken ct)
@@ -49,8 +51,10 @@ public class UserService(
         await employeeRepository.Update(employee, ct);
         return employee;
     }
+
+    public Task Delete(Guid id, CancellationToken ct)
     {
-        return employeeRepository.Update(employee, ct);
+        return employeeRepository.Delete(id, ct);
     }
 
 }
