@@ -31,14 +31,11 @@ public class InMemoryRepository<T> : IRepository<T> where T : BaseEntity
 
     public Task Update(T entity, CancellationToken ct)
     {
-        var item = _data.Values.FirstOrDefault(d => d.Id == entity.Id);
-        if (item == null)
+        if (!_data.ContainsKey(entity.Id))
             throw new EntityNotFoundException<T>(entity.Id);
 
-        _data.Values.Remove(item);
-        _data.Values.Add(item);
-
-        throw new NotImplementedException();
+        _data[entity.Id] = entity;
+        return Task.CompletedTask;
     }
 
     public Task Delete(Guid id, CancellationToken ct)

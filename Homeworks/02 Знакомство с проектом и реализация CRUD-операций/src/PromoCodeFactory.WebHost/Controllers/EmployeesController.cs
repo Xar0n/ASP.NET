@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PromoCodeFactory.Core.Application.Abstractions;
+using PromoCodeFactory.Core.Exceptions;
 using PromoCodeFactory.WebHost.Mapping;
 using PromoCodeFactory.WebHost.Models;
 
@@ -69,7 +70,29 @@ public class EmployeesController(
         [FromBody] EmployeeUpdateRequest request,
         CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var employee = await userService.GetById(id, ct);
+        if (employee is null)
+            return NotFound();
+
+        var role = await roleService.GetById(request.RoleId, ct);
+        if (role is null)
+            return BadRequest("Роль не найдена");
+
+        employee.FirstName = request.FirstName;
+        employee.LastName = request.LastName;
+        employee.Email = request.Email;
+        employee.Role = role;
+
+        try
+        {
+            await userService.Update(employee, ct);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFound();
+        }
+
+        return Ok(Mapper.ToEmployeeResponse(employee));
     }
 
     /// <summary>

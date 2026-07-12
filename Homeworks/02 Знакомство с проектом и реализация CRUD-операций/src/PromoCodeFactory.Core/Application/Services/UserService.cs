@@ -25,4 +25,9 @@ public class UserService(
         return employeeRepository.Add(employee, ct);
     }
 
+    public Task Update(Employee employee, CancellationToken ct)
+    {
+        return employeeRepository.Update(employee, ct);
+    }
+
 }
