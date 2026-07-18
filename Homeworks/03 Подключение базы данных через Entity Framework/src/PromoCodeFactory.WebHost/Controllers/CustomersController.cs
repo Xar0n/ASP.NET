@@ -1,4 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using PromoCodeFactory.Core.Application.Abstractions;
+using PromoCodeFactory.Core.Domain.PromoCodeManagement;
+using PromoCodeFactory.Core.Exceptions;
+using PromoCodeFactory.WebHost.Mapping;
 using PromoCodeFactory.WebHost.Models.Customers;
 
 namespace PromoCodeFactory.WebHost.Controllers;
@@ -6,7 +10,7 @@ namespace PromoCodeFactory.WebHost.Controllers;
 /// <summary>
 /// Клиенты
 /// </summary>
-public class CustomersController : BaseController
+public class CustomersController(ICustomerService customerService) : BaseController
 {
     /// <summary>
     /// Получить данные всех клиентов
@@ -15,7 +19,8 @@ public class CustomersController : BaseController
     [ProducesResponseType(typeof(IEnumerable<CustomerShortResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<CustomerShortResponse>>> Get(CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var customers = await customerService.GetAll(ct);
+        return Ok(customers.Select(CustomersMapper.ToCustomerShortResponse));
     }
 
     /// <summary>
@@ -26,7 +31,14 @@ public class CustomersController : BaseController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CustomerResponse>> GetById(Guid id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var customer = await customerService.GetById(id, ct);
+        if (customer is null)
+            return NotFound();
+
+        var promoCodeIds = customer.CustomerPromoCodes.Select(cpc => cpc.PromoCodeId).Distinct();
+        var promoCodes = await customerService.GetPromoCodes(promoCodeIds, ct);
+
+        return Ok(CustomersMapper.ToCustomerResponse(customer, promoCodes));
     }
 
     /// <summary>
@@ -37,7 +49,33 @@ public class CustomersController : BaseController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CustomerShortResponse>> Create([FromBody] CustomerCreateRequest request, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var customer = await customerService.Create(
+                request.FirstName,
+                request.LastName,
+                request.Email,
+                request.PreferenceIds,
+                ct);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = customer.Id },
+                CustomersMapper.ToCustomerShortResponse(customer));
+        }
+        catch (EntityNotFoundException ex)
+        {
+            if (ex.EntityType == typeof(Preference))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Предпочтение не найдено",
+                    Detail = $"Предпочтение с Id {ex.EntityId} не найдено."
+                });
+            }
+            else
+                return NotFound();
+        }
     }
 
     /// <summary>
@@ -52,7 +90,31 @@ public class CustomersController : BaseController
         [FromBody] CustomerUpdateRequest request,
         CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var customer = await customerService.Update(
+                id,
+                request.FirstName,
+                request.LastName,
+                request.Email,
+                request.PreferenceIds,
+                ct);
+
+            return Ok(CustomersMapper.ToCustomerShortResponse(customer));
+        }
+        catch (EntityNotFoundException ex)
+        {
+            if (ex.EntityType == typeof(Preference))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Предпочтение не найдено",
+                    Detail = $"Предпочтение с Id {ex.EntityId} не найдено."
+                });
+            }
+            else
+                return NotFound();
+        }
     }
 
     /// <summary>
@@ -63,6 +125,15 @@ public class CustomersController : BaseController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            await customerService.Delete(id, ct);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
     }
 }
