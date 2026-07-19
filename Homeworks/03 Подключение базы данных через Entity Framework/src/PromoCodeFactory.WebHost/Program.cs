@@ -1,3 +1,4 @@
+using PromoCodeFactory.Core.Application;
 using PromoCodeFactory.DataAccess;
 
 var builder = WebApplication.CreateBuilder();
@@ -9,6 +10,7 @@ builder.Services.AddRouting(options =>
 {
     options.LowercaseUrls = true;
 });
+builder.Services.AddApplication();
 builder.Services.AddControllers();
 
 builder.Services.AddOpenApi(builder.Environment);
