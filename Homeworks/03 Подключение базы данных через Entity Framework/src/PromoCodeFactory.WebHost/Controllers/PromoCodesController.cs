@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using PromoCodeFactory.Core.Application.Abstractions;
+using PromoCodeFactory.Core.Exceptions;
+using PromoCodeFactory.WebHost.Mapping;
 using PromoCodeFactory.WebHost.Models.PromoCodes;
 
 namespace PromoCodeFactory.WebHost.Controllers;
@@ -6,7 +9,7 @@ namespace PromoCodeFactory.WebHost.Controllers;
 /// <summary>
 /// Промокоды
 /// </summary>
-public class PromoCodesController : BaseController
+public class PromoCodesController(IPromoCodeService promoCodeService) : BaseController
 {
     /// <summary>
     /// Получить все промокоды
@@ -15,7 +18,8 @@ public class PromoCodesController : BaseController
     [ProducesResponseType(typeof(IEnumerable<PromoCodeShortResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<PromoCodeShortResponse>>> Get(CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var promoCodes = await promoCodeService.GetAll(ct);
+        return Ok(promoCodes.Select(PromoCodesMapper.ToPromoCodeShortResponse));
     }
 
     /// <summary>
@@ -26,7 +30,11 @@ public class PromoCodesController : BaseController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PromoCodeShortResponse>> GetById(Guid id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        var promoCode = await promoCodeService.GetById(id, ct);
+        if (promoCode is null)
+            return NotFound();
+
+        return Ok(PromoCodesMapper.ToPromoCodeShortResponse(promoCode));
     }
 
     /// <summary>
@@ -38,7 +46,31 @@ public class PromoCodesController : BaseController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PromoCodeShortResponse>> Create(PromoCodeCreateRequest request, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var promoCode = await promoCodeService.Create(
+                request.Code,
+                request.ServiceInfo,
+                request.PartnerName,
+                request.BeginDate,
+                request.EndDate,
+                request.PartnerManagerId,
+                request.PreferenceId,
+                ct);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = promoCode.Id },
+                PromoCodesMapper.ToPromoCodeShortResponse(promoCode));
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = $"{ex.EntityType.Name} не найдено",
+                Detail = ex.Message
+            });
+        }
     }
 
     /// <summary>
@@ -53,6 +85,26 @@ public class PromoCodesController : BaseController
         [FromBody] PromoCodeApplyRequest request,
         CancellationToken ct)
     {
-        throw new NotImplementedException();
+        try
+        {
+            await promoCodeService.Apply(id, request.CustomerId, ct);
+            return NoContent();
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = $"{ex.EntityType.Name} not found",
+                Detail = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Cannot apply promo code",
+                Detail = ex.Message
+            });
+        }
     }
 }

@@ -16,5 +16,6 @@ public static class DependencyInjection
     {
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IPreferenceService, PreferenceService>();
+        services.AddScoped<IPromoCodeService, PromoCodeService>();
     }
 }
