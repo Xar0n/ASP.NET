@@ -2,8 +2,8 @@ using AwesomeAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using PromoCodeFactory.Core.Abstractions.Repositories;
-using PromoCodeFactory.Core.Domain.Administration;
 using PromoCodeFactory.Core.Domain.PromoCodeManagement;
+using PromoCodeFactory.UnitTests.Helpers;
 using PromoCodeFactory.WebHost.Controllers;
 using PromoCodeFactory.WebHost.Models.PromoCodes;
 using Soenneker.Utils.AutoBogus;
@@ -62,7 +62,7 @@ public class CreateTests
         var partnerId = Guid.NewGuid();
         var preferenceId = Guid.NewGuid();
         var promoCodeCreateRequest = CreatePromoCodeCreateRequest(partnerId, preferenceId);
-        var partner = CreatePartner(partnerId, true);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
 
         _partnersRepositoryMock
             .Setup(r => r.GetById(partnerId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -92,9 +92,10 @@ public class CreateTests
         var partnerPromoCodeLimitId = Guid.NewGuid();
         var customerId = Guid.NewGuid();
         var promoCodeCreateRequest = CreatePromoCodeCreateRequest(partnerId, preferenceId);
-        var partner = CreatePartner(partnerId, true);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
         var preference = CreatePreference(preferenceId);
-        var partnerPromoCodeLimit = CreatePartnerPromoCodeLimit(partnerPromoCodeLimitId, canceledAt: DateTime.UtcNow);
+        var partnerPromoCodeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(
+            partnerPromoCodeLimitId, canceledAt: DateTime.UtcNow);
         partner.PartnerLimits.Add(partnerPromoCodeLimit);
         var customer = CreateCustomer(customerId, preferences: new List<Preference> { preference });
         var customers = new List<Customer> { customer };
@@ -131,10 +132,10 @@ public class CreateTests
         var partnerPromoCodeLimitId = Guid.NewGuid();
         var customerId = Guid.NewGuid();
         var promoCodeCreateRequest = CreatePromoCodeCreateRequest(partnerId, preferenceId);
-        var partner = CreatePartner(partnerId, true);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
         var preference = CreatePreference(preferenceId);
-        var partnerPromoCodeLimit = CreatePartnerPromoCodeLimit(partnerPromoCodeLimitId,
-            issuedCount: 200, limit: 100);
+        var partnerPromoCodeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(
+            partnerPromoCodeLimitId, issuedCount: 200, limit: 100);
         partner.PartnerLimits.Add(partnerPromoCodeLimit);
         var customer = CreateCustomer(customerId, preferences: new List<Preference> { preference });
         var customers = new List<Customer> { customer };
@@ -171,20 +172,20 @@ public class CreateTests
         var partnerPromoCodeLimitId = Guid.NewGuid();
         var customerId = Guid.NewGuid();
         var promoCodeCreateRequest = CreatePromoCodeCreateRequest(partnerId, preferenceId);
-        var partner = CreatePartner(partnerId, true);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
         var preference = CreatePreference(preferenceId);
-        var partnerPromoCodeLimit = CreatePartnerPromoCodeLimit(partnerPromoCodeLimitId,
-            issuedCount: 100, limit: 200);
+        var partnerPromoCodeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(
+            partnerPromoCodeLimitId, issuedCount: 100, limit: 200);
         partner.PartnerLimits.Add(partnerPromoCodeLimit);
         var customer = CreateCustomer(customerId, preferences: new List<Preference> { preference });
         var customers = new List<Customer> { customer };
 
         _partnersRepositoryMock
             .Setup(r => r.GetById(partnerId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(partner);
+            .Returns(Task.FromResult(partner)!);
         _preferencesRepositoryMock
             .Setup(r => r.GetById(preferenceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(preference);
+            .Returns(Task.FromResult(preference)!);
         _customersRepositoryMock
             .Setup(r => r.GetWhere(It.IsAny<Expression<Func<Customer, bool>>>()))
             .ReturnsAsync(customers);
@@ -228,84 +229,30 @@ public class CreateTests
 
     private static Preference CreatePreference(Guid preferenceId)
     {
-        var preference = new AutoFaker<Preference>()
+        return new AutoFaker<Preference>()
             .RuleFor(r => r.Id, _ => preferenceId)
             .RuleFor(r => r.Name, f => f.Lorem.Sentence(1))
             .Generate();
-        return preference;
     }
 
-    private static Partner CreatePartner(
-        Guid partnerId,
-        bool isActive,
-        ICollection<PartnerPromoCodeLimit>? partnerPromoCodeLimits = null)
-    {
-        var role = new AutoFaker<Role>()
-            .RuleFor(r => r.Id, _ => Guid.NewGuid())
-            .Generate();
-
-        var employee = new AutoFaker<Employee>()
-            .RuleFor(e => e.Id, _ => Guid.NewGuid())
-            .RuleFor(e => e.Role, role)
-            .Generate();
-
-        var partner = new AutoFaker<Partner>()
-            .RuleFor(p => p.Id, _ => partnerId)
-            .RuleFor(p => p.IsActive, _ => isActive)
-            .RuleFor(p => p.Manager, employee)
-            .RuleFor(p => p.PartnerLimits, partnerPromoCodeLimits == null ?
-                new List<PartnerPromoCodeLimit>() : partnerPromoCodeLimits)
-            .Generate();
-
-        return partner;
-    }
-
-    public static PartnerPromoCodeLimit CreatePartnerPromoCodeLimit(
-        Guid id,
-        DateTimeOffset? canceledAt = null,
-        DateTimeOffset? createdAt = null,
-        DateTimeOffset? endAt = null,
-        int? issuedCount = null,
-        int? limit = null)
-    {
-        var partnerPromoCodeLimit = new AutoFaker<PartnerPromoCodeLimit>()
-            .RuleFor(l => l.Id, _ => id)
-            .RuleFor(l => l.CanceledAt, _ => canceledAt)
-            .RuleFor(l => l.CreatedAt, _ => createdAt == null ?
-                DateTimeOffset.UtcNow.AddDays(-1) : createdAt)
-            .RuleFor(l => l.EndAt, _ => endAt == null ?
-                DateTimeOffset.UtcNow.AddDays(30) : endAt)
-            .RuleFor(l => l.IssuedCount, f => issuedCount  == null ?
-                f.Random.Int(1, 100) : issuedCount)
-            .RuleFor(l => l.Limit, f => limit == null ?
-                f.Random.Int(101, 200) : limit)
-            .Generate();
-
-        return partnerPromoCodeLimit;
-    }
-
-    private static Customer CreateCustomer(Guid customerId,
+    private static Customer CreateCustomer(
+        Guid customerId,
         ICollection<Preference>? preferences = null,
         ICollection<CustomerPromoCode>? customerPromoCodes = null)
     {
-        var customer = new AutoFaker<Customer>()
+        return new AutoFaker<Customer>()
+            .RuleFor(r => r.Id, _ => customerId)
             .RuleFor(r => r.FirstName, f => f.Name.FirstName())
             .RuleFor(r => r.LastName, f => f.Name.LastName())
             .RuleFor(r => r.Email, f => f.Internet.Email())
-            .RuleFor(r => r.Preferences, _ => preferences == null ?
-                new List<Preference>() : preferences)
-            .RuleFor(r => r.CustomerPromoCodes, _ => customerPromoCodes == null ?
-                new List<CustomerPromoCode>() : customerPromoCodes)
+            .RuleFor(r => r.Preferences, _ => preferences ?? new List<Preference>())
+            .RuleFor(r => r.CustomerPromoCodes, _ => customerPromoCodes ?? new List<CustomerPromoCode>())
             .Generate();
-        return customer;
     }
 
-    private static PromoCodeCreateRequest CreatePromoCodeCreateRequest(
-        Guid partnerId,
-        Guid preferenceId
-    )
+    private static PromoCodeCreateRequest CreatePromoCodeCreateRequest(Guid partnerId, Guid preferenceId)
     {
-        var createPromoCodeCreateRequest = new AutoFaker<PromoCodeCreateRequest>()
+        return new AutoFaker<PromoCodeCreateRequest>()
             .RuleFor(r => r.Code, f => f.Random.Replace("???-###"))
             .RuleFor(r => r.ServiceInfo, f => f.Lorem.Sentence(3))
             .RuleFor(r => r.PartnerId, _ => partnerId)
@@ -313,7 +260,5 @@ public class CreateTests
             .RuleFor(r => r.BeginDate, _ => DateTimeOffset.UtcNow.AddDays(-1))
             .RuleFor(r => r.EndDate, _ => DateTimeOffset.UtcNow.AddDays(30))
             .Generate();
-
-        return createPromoCodeCreateRequest;
     }
 }

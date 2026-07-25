@@ -2,12 +2,11 @@ using AwesomeAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using PromoCodeFactory.Core.Abstractions.Repositories;
-using PromoCodeFactory.Core.Domain.Administration;
 using PromoCodeFactory.Core.Domain.PromoCodeManagement;
 using PromoCodeFactory.Core.Exceptions;
+using PromoCodeFactory.UnitTests.Helpers;
 using PromoCodeFactory.WebHost.Controllers;
 using PromoCodeFactory.WebHost.Models.Partners;
-using Soenneker.Utils.AutoBogus;
 
 namespace PromoCodeFactory.UnitTests.WebHost.Controllers.Partners;
 
@@ -53,7 +52,7 @@ public class SetLimitTests
         // Arrange
         var partnerId = Guid.NewGuid();
         var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
-        var partner = CreatePartner(partnerId, false);
+        var partner = TestDataFactory.CreatePartner(partnerId, false);
 
         _partnersRepositoryMock
             .Setup(r => r.GetById(partnerId, true, It.IsAny<CancellationToken>()))
@@ -79,8 +78,9 @@ public class SetLimitTests
         var partnerId = Guid.NewGuid();
         var partnerPromoCodeLimitId = Guid.NewGuid();
         var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
-        var partner = CreatePartner(partnerId, true);
-        var partnerPromoCodeLimit = CreatePartnerPromoCodeLimit(partnerPromoCodeLimitId, canceledAt: DateTime.UtcNow);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
+        var partnerPromoCodeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(
+            partnerPromoCodeLimitId, canceledAt: DateTime.UtcNow);
         partner.PartnerLimits.Add(partnerPromoCodeLimit);
 
         _partnersRepositoryMock
@@ -112,8 +112,8 @@ public class SetLimitTests
         var partnerId = Guid.NewGuid();
         var activeLimitId = Guid.NewGuid();
         var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
-        var partner = CreatePartner(partnerId, true);
-        var activeLimit = CreatePartnerPromoCodeLimit(activeLimitId, canceledAt: null);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
+        var activeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(activeLimitId, canceledAt: null);
         partner.PartnerLimits.Add(activeLimit);
 
         _partnersRepositoryMock
@@ -151,8 +151,8 @@ public class SetLimitTests
         var partnerId = Guid.NewGuid();
         var activeLimitId = Guid.NewGuid();
         var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
-        var partner = CreatePartner(partnerId, true);
-        var activeLimit = CreatePartnerPromoCodeLimit(activeLimitId, canceledAt: null);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
+        var activeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(activeLimitId, canceledAt: null);
         partner.PartnerLimits.Add(activeLimit);
 
         _partnersRepositoryMock
@@ -170,55 +170,5 @@ public class SetLimitTests
         actionResult.Should().BeOfType<ActionResult<PartnerPromoCodeLimitResponse>>();
         actionResult.Result.Should().NotBeNull();
         actionResult.Result.Should().BeOfType<NotFoundResult>();
-    }
-
-
-    private static Partner CreatePartner(
-        Guid partnerId,
-        bool isActive,
-        ICollection<PartnerPromoCodeLimit>? partnerPromoCodeLimits = null)
-    {
-        var role = new AutoFaker<Role>()
-            .RuleFor(r => r.Id, _ => Guid.NewGuid())
-            .Generate();
-
-        var employee = new AutoFaker<Employee>()
-            .RuleFor(e => e.Id, _ => Guid.NewGuid())
-            .RuleFor(e => e.Role, role)
-            .Generate();
-
-        var partner = new AutoFaker<Partner>()
-            .RuleFor(p => p.Id, _ => partnerId)
-            .RuleFor(p => p.IsActive, _ => isActive)
-            .RuleFor(p => p.Manager, employee)
-            .RuleFor(p => p.PartnerLimits, partnerPromoCodeLimits == null ?
-                new List<PartnerPromoCodeLimit>() : partnerPromoCodeLimits)
-            .Generate();
-
-        return partner;
-    }
-
-    public static PartnerPromoCodeLimit CreatePartnerPromoCodeLimit(
-        Guid id,
-        DateTimeOffset? canceledAt = null,
-        DateTimeOffset? createdAt = null,
-        DateTimeOffset? endAt = null,
-        int? issuedCount = null,
-        int? limit = null)
-    {
-        var partnerPromoCodeLimit = new AutoFaker<PartnerPromoCodeLimit>()
-            .RuleFor(l => l.Id, _ => id)
-            .RuleFor(l => l.CanceledAt, _ => canceledAt)
-            .RuleFor(l => l.CreatedAt, _ => createdAt == null ?
-                DateTimeOffset.UtcNow.AddDays(-1) : createdAt)
-            .RuleFor(l => l.EndAt, _ => endAt == null ?
-                DateTimeOffset.UtcNow.AddDays(30) : endAt)
-            .RuleFor(l => l.IssuedCount, f => issuedCount  == null ?
-                f.Random.Int(1, 100) : issuedCount)
-            .RuleFor(l => l.Limit, f => limit == null ?
-                f.Random.Int(101, 200) : limit)
-            .Generate();
-
-        return partnerPromoCodeLimit;
     }
 }
