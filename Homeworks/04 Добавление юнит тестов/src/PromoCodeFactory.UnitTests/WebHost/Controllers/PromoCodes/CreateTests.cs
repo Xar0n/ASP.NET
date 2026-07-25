@@ -8,7 +8,6 @@ using PromoCodeFactory.WebHost.Controllers;
 using PromoCodeFactory.WebHost.Models.PromoCodes;
 using Soenneker.Utils.AutoBogus;
 using System.Linq.Expressions;
-using Xunit.Internal;
 
 namespace PromoCodeFactory.UnitTests.WebHost.Controllers.PromoCodes;
 
@@ -148,7 +147,7 @@ public class CreateTests
             .Returns(Task.FromResult(preference)!);
         _customersRepositoryMock
             .Setup(r => r.GetWhere(It.IsAny<Expression<Func<Customer, bool>>>()))
-            .ReturnsAsync(customers.CastOrToReadOnlyCollection());
+            .ReturnsAsync(customers);
 
         // Act
         var result = await _sut.Create(promoCodeCreateRequest, CancellationToken.None);
@@ -182,13 +181,13 @@ public class CreateTests
 
         _partnersRepositoryMock
             .Setup(r => r.GetById(partnerId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(partner)!);
+            .ReturnsAsync(partner);
         _preferencesRepositoryMock
             .Setup(r => r.GetById(preferenceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(preference)!);
+            .ReturnsAsync(preference);
         _customersRepositoryMock
             .Setup(r => r.GetWhere(It.IsAny<Expression<Func<Customer, bool>>>()))
-            .Returns(Task.FromResult(customers.CastOrToReadOnlyCollection()));
+            .ReturnsAsync(customers);
         _promoCodesRepositoryMock
             .Setup(r => r.Add(It.IsAny<PromoCode>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
