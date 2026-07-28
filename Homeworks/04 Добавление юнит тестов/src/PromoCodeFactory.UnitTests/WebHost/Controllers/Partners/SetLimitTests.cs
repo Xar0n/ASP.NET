@@ -1,29 +1,174 @@
+using AwesomeAssertions;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using PromoCodeFactory.Core.Abstractions.Repositories;
+using PromoCodeFactory.Core.Domain.PromoCodeManagement;
+using PromoCodeFactory.Core.Exceptions;
+using PromoCodeFactory.UnitTests.Helpers;
+using PromoCodeFactory.WebHost.Controllers;
+using PromoCodeFactory.WebHost.Models.Partners;
+
 namespace PromoCodeFactory.UnitTests.WebHost.Controllers.Partners;
 
 public class SetLimitTests
 {
+    private readonly Mock<IRepository<Partner>> _partnersRepositoryMock;
+    private readonly Mock<IRepository<PartnerPromoCodeLimit>> _partnerLimitsRepositoryMock;
+    private readonly PartnersController _sut;
+
+    public SetLimitTests()
+    {
+        _partnersRepositoryMock = new Mock<IRepository<Partner>>();
+        _partnerLimitsRepositoryMock = new Mock<IRepository<PartnerPromoCodeLimit>>();
+        _sut = new PartnersController(_partnersRepositoryMock.Object, _partnerLimitsRepositoryMock.Object);
+    }
+
     [Fact]
     public async Task CreateLimit_WhenPartnerNotFound_ReturnsNotFound()
     {
+        // Arrange
+        var partnerId = Guid.NewGuid();
+        var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
+        _partnersRepositoryMock
+            .Setup(r => r.GetById(partnerId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Partner?)null);
+
+        // Act
+        var result = await _sut.CreateLimit(partnerId, request, CancellationToken.None);
+
+        // Assert
+        result.Should().BeOfType<ActionResult<PartnerPromoCodeLimitResponse>>();
+        result.Result.Should().NotBeNull();
+        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        var notFoundResult = (NotFoundObjectResult)result.Result;
+        notFoundResult.Value.Should().BeOfType<ProblemDetails>();
+        var problemDetails = (ProblemDetails)notFoundResult.Value;
+        problemDetails.Title.Should().Be("Partner not found");
     }
 
     [Fact]
     public async Task CreateLimit_WhenPartnerBlocked_ReturnsUnprocessableEntity()
     {
+        // Arrange
+        var partnerId = Guid.NewGuid();
+        var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
+        var partner = TestDataFactory.CreatePartner(partnerId, false);
+
+        _partnersRepositoryMock
+            .Setup(r => r.GetById(partnerId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(partner);
+
+        // Act
+        var actionResult = await _sut.CreateLimit(partnerId, request, CancellationToken.None);
+
+        // Assert
+        actionResult.Should().BeOfType<ActionResult<PartnerPromoCodeLimitResponse>>();
+        actionResult.Result.Should().NotBeNull();
+        actionResult.Result.Should().BeOfType<UnprocessableEntityObjectResult>();
+        var unprocessableEntityObjectResult = (UnprocessableEntityObjectResult)actionResult.Result;
+        unprocessableEntityObjectResult.Value.Should().BeOfType<ProblemDetails>();
+        var problemDetails = (ProblemDetails)unprocessableEntityObjectResult.Value;
+        problemDetails.Title.Should().Be("Partner blocked");
     }
 
     [Fact]
     public async Task CreateLimit_WhenValidRequest_ReturnsCreatedAndAddsLimit()
     {
+        // Arrange
+        var partnerId = Guid.NewGuid();
+        var partnerPromoCodeLimitId = Guid.NewGuid();
+        var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
+        var partnerPromoCodeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(
+            partnerPromoCodeLimitId, canceledAt: DateTime.UtcNow);
+        partner.PartnerLimits.Add(partnerPromoCodeLimit);
+
+        _partnersRepositoryMock
+            .Setup(r => r.GetById(partnerId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(partner);
+
+        _partnerLimitsRepositoryMock
+            .Setup(r => r.Add(It.IsAny<PartnerPromoCodeLimit>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var actionResult = await _sut.CreateLimit(partnerId, request, CancellationToken.None);
+
+        // Assert
+        actionResult.Should().BeOfType<ActionResult<PartnerPromoCodeLimitResponse>>();
+        actionResult.Result.Should().NotBeNull();
+        actionResult.Result.Should().BeOfType<CreatedAtActionResult>();
+        var createdAtActionResult = (CreatedAtActionResult)actionResult.Result;
+        createdAtActionResult.Value.Should().BeOfType<PartnerPromoCodeLimitResponse>();
+        var partnerPromoCodeLimitResponse = (PartnerPromoCodeLimitResponse)createdAtActionResult.Value;
+        partnerPromoCodeLimitResponse.EndAt.Should().Be(request.EndAt);
+        partnerPromoCodeLimitResponse.Limit.Should().Be(request.Limit);
     }
 
     [Fact]
     public async Task CreateLimit_WhenValidRequestWithActiveLimits_CancelsOldLimitsAndAddsNew()
     {
+        // Arrange
+        var partnerId = Guid.NewGuid();
+        var activeLimitId = Guid.NewGuid();
+        var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
+        var activeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(activeLimitId, canceledAt: null);
+        partner.PartnerLimits.Add(activeLimit);
+
+        _partnersRepositoryMock
+            .Setup(r => r.GetById(partnerId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(partner);
+
+        _partnersRepositoryMock
+            .Setup(r => r.Update(It.IsAny<Partner>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _partnerLimitsRepositoryMock
+            .Setup(r => r.Add(It.IsAny<PartnerPromoCodeLimit>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var actionResult = await _sut.CreateLimit(partnerId, request, CancellationToken.None);
+
+        // Assert
+        actionResult.Should().BeOfType<ActionResult<PartnerPromoCodeLimitResponse>>();
+        actionResult.Result.Should().NotBeNull();
+        actionResult.Result.Should().BeOfType<CreatedAtActionResult>();
+        activeLimit.CanceledAt.Should().NotBeNull();
+        _partnersRepositoryMock.Verify(
+            r => r.Update(partner, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _partnerLimitsRepositoryMock.Verify(
+            r => r.Add(It.IsAny<PartnerPromoCodeLimit>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
     public async Task CreateLimit_WhenUpdateThrowsEntityNotFoundException_ReturnsNotFound()
     {
+        // Arrange
+        var partnerId = Guid.NewGuid();
+        var activeLimitId = Guid.NewGuid();
+        var request = new PartnerPromoCodeLimitCreateRequest(EndAt: DateTime.UtcNow.AddDays(2), Limit: 5);
+        var partner = TestDataFactory.CreatePartner(partnerId, true);
+        var activeLimit = TestDataFactory.CreatePartnerPromoCodeLimit(activeLimitId, canceledAt: null);
+        partner.PartnerLimits.Add(activeLimit);
+
+        _partnersRepositoryMock
+            .Setup(r => r.GetById(partnerId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(partner);
+
+        _partnersRepositoryMock
+            .Setup(r => r.Update(It.IsAny<Partner>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new EntityNotFoundException<Partner>(partnerId));
+
+        // Act
+        var actionResult = await _sut.CreateLimit(partnerId, request, CancellationToken.None);
+
+        // Assert
+        actionResult.Should().BeOfType<ActionResult<PartnerPromoCodeLimitResponse>>();
+        actionResult.Result.Should().NotBeNull();
+        actionResult.Result.Should().BeOfType<NotFoundResult>();
     }
 }
