@@ -2,12 +2,12 @@ name: .NET CI
 
 on:
   push:
-    branches: ['master', 'feature/*']
-    paths-ignore:
-      - '**/*.md'
-  pull_request:
-    branches: ['master']
-  
+    branches:
+      - main
+    paths:
+      - 'Homeworks/06 Настройка CI/**'
+  workflow_dispatch:
+
 env:
   REGISTRY: 'ghcr.io'
   IMAGE_NAME: 'xar0n/asp.net/promocodefactory-webhost'
