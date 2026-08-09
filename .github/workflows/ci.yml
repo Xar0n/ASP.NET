@@ -10,7 +10,7 @@ on:
   
 env:
   REGISTRY: 'ghcr.io'
-  IMAGE_NAME: '${{ github.repository }}/promocodefactory-webhost'
+  IMAGE_NAME: 'xar0n/asp.net/promocodefactory-webhost'
   
 jobs:
   build-and-publish:
