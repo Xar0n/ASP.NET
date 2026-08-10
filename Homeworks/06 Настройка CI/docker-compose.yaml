@@ -1,0 +1,16 @@
+name: promocodefactory
+services:
+  promocode-factory-api:
+    image: ghcr.io/xar0n/asp.net/promocodefactory-webhost:latest
+    container_name: 'promocode-factory-api'
+    restart: always
+    ports:
+      - "8095:8080"
+    volumes:
+      - db:/app/db
+    environment:
+      - "ConnectionStrings:PromocodeFactoryDb=Filename=/app/db/PromoCodeFactoryDb.sqlite"
+      - "ASPNETCORE_ENVIRONMENT=Development"
+
+volumes:
+  db:
