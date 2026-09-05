@@ -1,28 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Box, TextField, Button, Typography } from '@mui/material';
-import { useAppDispatch } from '../store/hooks';
+import { TextField } from '@mui/material';
+import { withAuthForm } from '../hocs/withAuthForm';
+import type { WithAuthFormProps } from '../hocs/withAuthForm';
 import { login } from '../store/slices/authSlice';
 
-export const Login = () => {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+const LoginInner = ({ FormShell }: WithAuthFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    dispatch(login({ email }));
-    navigate('/');
-  };
-
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit}
-      sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 400 }}
+    <FormShell
+      title="Войти"
+      submitLabel="Войти"
+      onSubmit={(dispatch) => dispatch(login({ email }))}
     >
-      <Typography variant="h4">Войти</Typography>
       <TextField
         label="Email"
         type="email"
@@ -37,9 +28,8 @@ export const Login = () => {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <Button variant="contained" type="submit">
-        Войти
-      </Button>
-    </Box>
+    </FormShell>
   );
 };
+
+export const Login = withAuthForm(LoginInner);
