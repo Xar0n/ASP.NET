@@ -12,7 +12,7 @@ export interface AuthFormProps {
 }
 
 export interface WithAuthFormProps {
-  FormShell: FC<AuthFormProps>;
+  AuthFormShell: FC<AuthFormProps>;
 }
 
 export function withAuthForm<P extends object>(
@@ -22,7 +22,7 @@ export function withAuthForm<P extends object>(
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
-    const FormShell: FC<AuthFormProps> = ({
+    const AuthFormShell: FC<AuthFormProps> = ({
       title,
       submitLabel,
       onSubmit,
@@ -45,6 +45,6 @@ export function withAuthForm<P extends object>(
       </Box>
     );
 
-    return <Wrapped {...props} FormShell={FormShell} />;
+    return <Wrapped {...props} AuthFormShell={AuthFormShell} />;
   };
 }

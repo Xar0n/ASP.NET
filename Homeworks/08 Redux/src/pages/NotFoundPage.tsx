@@ -1,9 +1,10 @@
-import { Typography, Button } from '@mui/material';
+import { Button } from '@mui/material';
 import { Link } from 'react-router-dom';
+import { PageTitle } from '../components';
 
 export const NotFound = () => (
     <>
-        <Typography variant="h4">404 — страница не найдена</Typography>
+        <PageTitle title="404 — страница не найдена" />
         <Button component={Link} to="/">На главную</Button>
     </>
 );
