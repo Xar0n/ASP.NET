@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/OneHost/">
+    <Project Path="WeatherApi/weatherapi.client/weatherapi.client.esproj">
+      <Build />
+      <Deploy />
+    </Project>
+    <Project Path="WeatherApi/WeatherApi.Server/WeatherApi.Server.csproj" />
+  </Folder>
+  <Folder Name="/TwoHost/">
+    <Project Path="WeatherApiSecond/WeatherApiSecond.csproj" />
+  </Folder>
+</Solution>
